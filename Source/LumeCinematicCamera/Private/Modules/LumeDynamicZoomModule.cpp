@@ -34,7 +34,7 @@ void ULumeDynamicZoomModule::UpdateModule(const FLumeCameraContext& Context, FLu
 		IdleAlpha = LumeMath::SmoothDamp(IdleAlpha, TargetIdleAlpha, IdleAlphaRate, IdleSmooth, Dt);
 	}
 
-	double DesiredDistance = F.Distance + ExtraDistanceAtMaxSpeed * SpeedAlpha;
+	double DesiredDistance = F.Distance + ExtraDistanceAtMaxSpeed * SpeedAlpha + static_cast<double>(State.ExtraDistance);
 	DesiredDistance *= FMath::Lerp(1.0, static_cast<double>(IdleDistanceMultiplier), IdleAlpha);
 	DesiredDistance = FMath::Max(DesiredDistance, static_cast<double>(State.MinimumDistance));
 	DesiredDistance = FMath::Clamp(DesiredDistance, static_cast<double>(MinDistance), FMath::Max(static_cast<double>(MinDistance), static_cast<double>(MaxDistance)));

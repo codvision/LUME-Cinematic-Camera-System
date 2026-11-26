@@ -65,6 +65,22 @@ enum class ELumeZonePreset : uint8
 	Horror		UMETA(DisplayName = "Terror")
 };
 
+/** Presets de tremor de câmera. */
+UENUM(BlueprintType)
+enum class ELumeShakePreset : uint8
+{
+	/** Golpe leve: tremor curto e pequeno. */
+	LightHit	UMETA(DisplayName = "Golpe Leve"),
+	/** Golpe forte: tremor médio com empurrão. */
+	HeavyHit	UMETA(DisplayName = "Golpe Forte"),
+	/** Explosão: tremor forte, empurra para longe da explosão. */
+	Explosion	UMETA(DisplayName = "Explosão"),
+	/** Aterrissagem pesada: tranco para baixo. */
+	Landing		UMETA(DisplayName = "Aterrissagem"),
+	/** Susto: tranco seco e rápido. */
+	Jumpscare	UMETA(DisplayName = "Susto")
+};
+
 /**
  * Enquadramento completo da câmera. É o "perfil base" da câmera e o resultado
  * da mistura com todas as zonas/overrides ativos.
@@ -291,6 +307,10 @@ struct LUMECINEMATICCAMERA_API FLumeCameraState
 	/** Distância da câmera até o pivô (cm). */
 	UPROPERTY(BlueprintReadWrite, Category = "LUME")
 	float Distance = 600.f;
+
+	/** Distância extra somada pelo zoom (ex.: pontos de interesse). */
+	UPROPERTY(BlueprintReadWrite, Category = "LUME")
+	float ExtraDistance = 0.f;
 
 	/** Distância mínima exigida (ex.: para enquadrar múltiplos alvos). */
 	UPROPERTY(BlueprintReadWrite, Category = "LUME")

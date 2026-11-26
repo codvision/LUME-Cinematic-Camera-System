@@ -3,6 +3,7 @@
 #include "LumeCameraZone.h"
 #include "LumeCameraBoundsVolume.h"
 #include "LumeCinematicCameraComponent.h"
+#include "LumeInterestPointComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
 
@@ -30,6 +31,19 @@ void ULumeCameraSubsystem::RegisterBoundsVolume(ALumeCameraBoundsVolume* Volume)
 void ULumeCameraSubsystem::UnregisterBoundsVolume(ALumeCameraBoundsVolume* Volume)
 {
 	BoundsVolumes.Remove(Volume);
+}
+
+void ULumeCameraSubsystem::RegisterInterestPoint(ULumeInterestPointComponent* Point)
+{
+	if (Point)
+	{
+		InterestPoints.AddUnique(Point);
+	}
+}
+
+void ULumeCameraSubsystem::UnregisterInterestPoint(ULumeInterestPointComponent* Point)
+{
+	InterestPoints.Remove(Point);
 }
 
 void ULumeCameraSubsystem::RegisterCamera(ULumeCinematicCameraComponent* Camera)
@@ -199,6 +213,7 @@ void ULumeCameraSubsystem::Deinitialize()
 	Zones.Reset();
 	BoundsVolumes.Reset();
 	Cameras.Reset();
+	InterestPoints.Reset();
 	Stacks.Reset();
 	Super::Deinitialize();
 }

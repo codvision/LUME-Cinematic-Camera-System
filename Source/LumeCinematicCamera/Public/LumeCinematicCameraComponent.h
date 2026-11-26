@@ -104,6 +104,14 @@ public:
 	UPROPERTY(EditAnywhere, Instanced, BlueprintReadOnly, Category = "LUME|Modules")
 	TArray<TObjectPtr<ULumeCameraModule>> Modules;
 
+	/**
+	 * Ao iniciar, adiciona os módulos padrão do LUME que estiverem faltando na lista
+	 * (ex.: módulos novos de uma atualização do plugin). Para desligar um módulo,
+	 * desmarque "Enabled" nele em vez de removê-lo.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LUME|Modules")
+	bool bAutoAddMissingModules = true;
+
 	// ---------- Depuração ----------
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LUME|Debug")
@@ -170,6 +178,45 @@ public:
 	{
 		return Cast<T>(FindModuleByClass(T::StaticClass()));
 	}
+
+	// ---------- Tremor e impactos ----------
+
+	/** Toca um tremor pronto (golpe, explosão, aterrissagem, susto). Direction opcional = direção do empurrão. */
+	UFUNCTION(BlueprintCallable, Category = "LUME|Shake", meta = (AdvancedDisplay = "Direction"))
+	void PlayShake(ELumeShakePreset Preset, float Scale = 1.f, FVector Direction = FVector::ZeroVector);
+
+	/** Soma trauma (0..1): 0.2 leve, 0.5 forte, 0.9 explosão. */
+	UFUNCTION(BlueprintCallable, Category = "LUME|Shake")
+	void AddTrauma(float Amount);
+
+	/** Empurra a câmera (cm/s, no mundo); uma mola a traz de volta. */
+	UFUNCTION(BlueprintCallable, Category = "LUME|Shake")
+	void AddCameraImpulse(FVector WorldImpulse);
+
+	/** Tremor contínuo (0..1), ex.: terremoto. Use 0 para parar. */
+	UFUNCTION(BlueprintCallable, Category = "LUME|Shake")
+	void SetContinuousShake(float Amount);
+
+	// ---------- Olhar em volta ----------
+
+	/** Espiar com o analógico/setas (-1..1). Chame enquanto pressionado; ao parar, a câmera volta. */
+	UFUNCTION(BlueprintCallable, Category = "LUME|Look Around")
+	void SetLookInput(FVector2D Input);
+
+	/** Encontra o módulo do tipo T ou o cria (na posição padrão do pipeline). */
+	template <typename T>
+	T* FindOrAddModule()
+	{
+		if (T* Existing = FindModule<T>())
+		{
+			return Existing;
+		}
+		EnsureBuiltInModules();
+		return FindModule<T>();
+	}
+
+	/** Adiciona, na ordem correta, os módulos padrão que estiverem faltando. */
+	void EnsureBuiltInModules();
 
 	/** Controller do jogador que esta câmera serve (o do personagem dono, ou o de PlayerIndex). */
 	APlayerController* GetServedPlayerController() const;

@@ -171,6 +171,87 @@ Arraste uma **LUME Camera Bounds** e ajuste a caixa azul. A câmera nunca sai de
 
 ---
 
+## Etapa 10: Configurar para jogo 2.5D (lateral)
+
+Clique no componente **LumeCinematicCamera** na Blueprint do personagem e ajuste:
+
+**Direção da câmera** (**LUME | Framing → Rotation → Yaw**):
+- Se o personagem anda para os lados no eixo **Y** (seta verde no editor): **Yaw = 0**.
+- Se anda no eixo **X** (seta vermelha): **Yaw = 90** (ou -90 para ver do outro lado).
+
+**Valores recomendados para 2.5D:**
+
+| Onde | Campo | Valor |
+|---|---|---|
+| LUME \| Framing | Distance | 900 |
+| LUME \| Framing | Field Of View | 50 (menos distorção nas bordas) |
+| LUME \| Framing | Pivot Offset | Z = 80 |
+| LUME \| Framing | Screen Offset | X = 0, Y = -0.1 (personagem um pouco abaixo do centro) |
+| LUME \| Framing | Rotation | Pitch = -8 |
+| LUME \| Framing | Look Ahead Distance | 250 (mostra mais à frente de onde ele corre) |
+| LUME \| Framing | Dead Zone | X = 40, Y = 90 (pulos pequenos não mexem a câmera) |
+| LUME \| Framing | Aperture | 8 |
+| Modules → Rotation | Mode | World Fixed |
+| Modules → Collision | Enabled | **desmarcado** (em 2.5D, objetos na frente puxariam a câmera) |
+
+**Para o personagem não sair da "linha" do jogo:** selecione o componente **Character Movement**
+(Componente de Movimento do Personagem). Em **Planar Movement**, marque **Constrain to Plane** e,
+em **Plane Constraint Axis Setting**, escolha o eixo de profundidade (X, se ele anda em Y).
+
+**Limites da fase:** coloque um **LUME Camera Bounds** cobrindo a área onde a câmera pode ir. Ela
+para nas bordas, como nos jogos de plataforma clássicos.
+
+---
+
+## Etapa 11: Tremor de câmera (golpes, explosões, quedas)
+
+**Aterrissagem:** é automática. Quedas altas já dão um tranco na câmera.
+
+**Em qualquer Blueprint** (inimigo, armadilha, Level Blueprint), clique com o botão direito no grafo e procure:
+- **LUME Shake Camera**: escolha o **Preset** (Golpe Leve, Golpe Forte, Explosão, Aterrissagem, Susto) e a **Scale** (força, 1 = normal).
+  Exemplo: no evento de dano do personagem → **LUME Shake Camera** com **Golpe Forte**.
+- **LUME Shake At Location**: tremor com origem num ponto (explosão). Ligue a posição da explosão em **Location**.
+  Perto treme forte, longe treme menos, e fora do **Outer Radius** não treme.
+- **LUME Set Continuous Shake**: tremor contínuo (terremoto, máquina). **Amount** 0.3 a 0.5 liga, e 0 desliga.
+- **LUME Camera Impulse**: empurrão numa direção. A câmera volta quicando, como uma mola.
+
+**Ajustes** em **LUME | Modules → Shake & Impacts (Tremor)**:
+- **Global Intensity**: força de todos os tremores. Bom para colocar no menu de opções (0 = desligado).
+- **Max Offset / Max Angles**: o quanto a câmera se mexe no tremor mais forte.
+- **Landing Speed Threshold**: a velocidade de queda a partir da qual há tranco.
+
+---
+
+## Etapa 12: Pontos de interesse e olhar em volta
+
+### Pontos de interesse
+Servem para fazer a câmera "dar atenção" a uma porta, um baú, um inimigo ou um chefão quando o jogador chega perto.
+
+**No mapa:** arraste um **LUME Camera Interest Point** (painel Place Actors). A esfera **verde** é
+onde começa a atração, e a **amarela** é onde a atração é total.
+
+**Num objeto com Blueprint** (inimigo, porta): abra a Blueprint, clique em **+ Add** e escolha **LUME Interest Point**.
+
+Opções principais:
+- **Influence**: quanto a câmera vai na direção do ponto (0.3 é sutil, 0.7 é forte).
+- **Keep In Frame**: afasta a câmera para mostrar o jogador e o ponto juntos. Ótimo para chefões.
+- **Extra Distance**: afasta a câmera enquanto o jogador está perto (um valor negativo aproxima).
+
+### Olhar em volta (espiar)
+Deixa o jogador segurar um botão ou o analógico direito para espiar para os lados, para cima ou para baixo.
+
+1. Na Blueprint do personagem, crie (ou use) uma **Input Action** do tipo **Axis2D (Vector2D)** ligada ao
+   analógico direito e/ou às setas.
+2. No grafo, no evento **Triggered** dessa ação, ligue o valor (**Action Value**) no nó **LUME Set Look Input**.
+3. Pronto. Enquanto o botão estiver pressionado, a câmera espia, e quando o jogador solta, ela volta sozinha.
+
+Para espiar só para cima e para baixo (clássico de plataforma), ligue só o Y. Para isso, use
+**Make Vector 2D** com X = 0.
+
+A distância da espiada fica em **LUME | Modules → Interest & Look Around → Look Around Distance**.
+
+---
+
 ## Problemas comuns
 
 | Problema | Solução |
@@ -182,6 +263,8 @@ Arraste uma **LUME Camera Bounds** e ajuste a caixa azul. A câmera nunca sai de
 | Andar para frente vai para o lado errado | No componente LUME, marque **Align Controls To Camera** (funciona no modo World Fixed). |
 | A câmera segue o personagem errado | Em **LUME / Target**, escolha o **Target Actor** manualmente. |
 | A zona não faz efeito | O personagem (o centro da cápsula) precisa estar **dentro** da caixa. Confira se `Enabled` está marcado. |
+| Não vejo "Shake & Impacts" ou "Interest & Look Around" na lista de módulos | É normal em câmeras criadas antes desta versão. Eles são adicionados sozinhos ao dar Play. Para ajustá-los no editor, clique no **+** da lista **Modules** e adicione o módulo. |
+| A câmera pula para perto do personagem em 2.5D | Desmarque o módulo **Collision** (Etapa 10). |
 | Quero ver o que a câmera está fazendo | Marque **Draw Debug** no componente LUME. Aparecem esferas, setas e o peso das zonas no canto da tela. |
 
 Se travar em qualquer etapa, mande o print ou o texto do erro.

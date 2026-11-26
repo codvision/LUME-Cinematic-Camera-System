@@ -11,6 +11,8 @@
 #include "Modules/LumeBoundsModule.h"
 #include "Modules/LumeDepthOfFieldModule.h"
 #include "Modules/LumeHandheldNoiseModule.h"
+#include "Modules/LumeInterestModule.h"
+#include "Modules/LumeShakeModule.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
@@ -40,12 +42,91 @@ ULumeCinematicCameraComponent::ULumeCinematicCameraComponent()
 	// Pipeline padrão (a ordem importa).
 	Modules.Add(CreateDefaultSubobject<ULumeTrackingModule>(TEXT("TrackingModule")));
 	Modules.Add(CreateDefaultSubobject<ULumeFramingModule>(TEXT("FramingModule")));
+	Modules.Add(CreateDefaultSubobject<ULumeInterestModule>(TEXT("InterestModule")));
 	Modules.Add(CreateDefaultSubobject<ULumeRotationModule>(TEXT("RotationModule")));
 	Modules.Add(CreateDefaultSubobject<ULumeDynamicZoomModule>(TEXT("DynamicZoomModule")));
 	Modules.Add(CreateDefaultSubobject<ULumeCollisionModule>(TEXT("CollisionModule")));
 	Modules.Add(CreateDefaultSubobject<ULumeBoundsModule>(TEXT("BoundsModule")));
 	Modules.Add(CreateDefaultSubobject<ULumeDepthOfFieldModule>(TEXT("DepthOfFieldModule")));
 	Modules.Add(CreateDefaultSubobject<ULumeHandheldNoiseModule>(TEXT("HandheldNoiseModule")));
+	Modules.Add(CreateDefaultSubobject<ULumeShakeModule>(TEXT("ShakeModule")));
+}
+
+void ULumeCinematicCameraComponent::EnsureBuiltInModules()
+{
+	// Ordem canônica do pipeline.
+	const UClass* Order[] =
+	{
+		ULumeTrackingModule::StaticClass(),
+		ULumeFramingModule::StaticClass(),
+		ULumeInterestModule::StaticClass(),
+		ULumeRotationModule::StaticClass(),
+		ULumeDynamicZoomModule::StaticClass(),
+		ULumeCollisionModule::StaticClass(),
+		ULumeBoundsModule::StaticClass(),
+		ULumeDepthOfFieldModule::StaticClass(),
+		ULumeHandheldNoiseModule::StaticClass(),
+		ULumeShakeModule::StaticClass(),
+	};
+
+	int32 InsertAt = 0;
+	for (const UClass* ModuleClass : Order)
+	{
+		const int32 Found = Modules.IndexOfByPredicate([ModuleClass](const TObjectPtr<ULumeCameraModule>& Module)
+		{
+			return Module && Module->IsA(ModuleClass);
+		});
+
+		if (Found != INDEX_NONE)
+		{
+			InsertAt = Found + 1;
+		}
+		else
+		{
+			AddModule(const_cast<UClass*>(ModuleClass), InsertAt);
+			++InsertAt;
+		}
+	}
+}
+
+void ULumeCinematicCameraComponent::PlayShake(ELumeShakePreset Preset, float Scale, FVector Direction)
+{
+	if (ULumeShakeModule* Shake = FindOrAddModule<ULumeShakeModule>())
+	{
+		Shake->PlayShake(Preset, Scale, Direction);
+	}
+}
+
+void ULumeCinematicCameraComponent::AddTrauma(float Amount)
+{
+	if (ULumeShakeModule* Shake = FindOrAddModule<ULumeShakeModule>())
+	{
+		Shake->AddTrauma(Amount);
+	}
+}
+
+void ULumeCinematicCameraComponent::AddCameraImpulse(FVector WorldImpulse)
+{
+	if (ULumeShakeModule* Shake = FindOrAddModule<ULumeShakeModule>())
+	{
+		Shake->AddImpulse(WorldImpulse);
+	}
+}
+
+void ULumeCinematicCameraComponent::SetContinuousShake(float Amount)
+{
+	if (ULumeShakeModule* Shake = FindOrAddModule<ULumeShakeModule>())
+	{
+		Shake->SetContinuousShake(Amount);
+	}
+}
+
+void ULumeCinematicCameraComponent::SetLookInput(FVector2D Input)
+{
+	if (ULumeInterestModule* Interest = FindOrAddModule<ULumeInterestModule>())
+	{
+		Interest->SetLookInput(Input);
+	}
 }
 
 ULumeCameraSubsystem* ULumeCinematicCameraComponent::GetLumeSubsystem() const
@@ -66,6 +147,11 @@ void ULumeCinematicCameraComponent::BeginPlay()
 	if (bDeactivateOtherCameras)
 	{
 		DeactivateOtherCameras();
+	}
+
+	if (bAutoAddMissingModules)
+	{
+		EnsureBuiltInModules();
 	}
 
 	// A rotação vem do LUME, nunca da Control Rotation do pawn (mesmo que marcado no Details).
@@ -522,6 +608,7 @@ void ULumeCinematicCameraComponent::UpdateCamera(float DeltaSeconds)
 	State.Rotation = F.Rotation;
 	State.Distance = F.Distance;
 	State.MinimumDistance = 0.f;
+	State.ExtraDistance = 0.f;
 	State.FieldOfView = F.FieldOfView;
 	State.ScreenOffset = F.ScreenOffset;
 	if (bSnap)

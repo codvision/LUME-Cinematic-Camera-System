@@ -46,9 +46,9 @@ ULumeCinematicCameraComponent  (UCameraComponent com transform absoluto, tick em
  ├─ Zonas ────────┼─► mistura por prioridade com SmoothStep ─► Context.Framing
  ├─ Overrides ────┘      (scripts: PushFramingOverride)
  └─ Modules[] (Instanced, editáveis no Details)
-      PreCompose : Tracking → Framing → Rotation → Dynamic Zoom
+      PreCompose : Tracking → Framing → Interest → Rotation → Dynamic Zoom
       Composição  : pivô + deslocamento de tela + rotação + distância (+ ponto de vista fixo)
-      PostCompose: Collision → Bounds → Depth of Field → Handheld Noise
+      PostCompose: Collision → Bounds → Depth of Field → Handheld Noise → Shake
 ULumeCameraSubsystem  (registro de zonas, limites e câmeras; câmera ativa com pilha push/pop)
 ```
 
@@ -109,6 +109,29 @@ somam por prioridade.
 
 ---
 
+## 5. Tremor e impactos: `Shake & Impacts`
+
+- **Trauma**: cada evento soma trauma (0..1), que decai sozinho. O tremor é proporcional a trauma²,
+  com ruído Perlin em posição (no plano da tela, ideal para 2.5D) e em rotação.
+- **Empurrão com mola**: o impulso desloca a câmera e uma mola subamortecida a traz de volta.
+- **Aterrissagem automática**: quedas acima de `Landing Speed Threshold` geram trauma e um tranco para baixo.
+- **Presets**: Golpe Leve, Golpe Forte, Explosão, Aterrissagem, Susto. Também há tremor contínuo (terremoto).
+- **Global Intensity**: opção de acessibilidade.
+
+## 6. Pontos de interesse e olhar em volta: `Interest & Look Around`
+
+- **LUME Interest Point** (componente para qualquer Blueprint) e **LUME Camera Interest Point** (ator com os raios visíveis no editor).
+  Perto do ponto, o pivô desliza na direção dele (`Influence`, `MaxShift`), com queda suave entre `FullInfluenceRadius` e `ActivationRadius`.
+  `Keep In Frame` afasta a câmera para mostrar o jogador e o ponto, e `Extra Distance` afasta ou aproxima.
+- **Olhar em volta**: `Set Look Input(-1..1)` desloca a câmera no plano da tela até `LookAroundDistance`.
+  Quando o jogador para de enviar entrada, ela volta sozinha.
+
+## Migração de módulos
+
+Com `Auto Add Missing Modules` (ligado por padrão), módulos padrão que faltem na lista são adicionados na
+posição correta ao dar Play. Câmeras criadas antes de uma atualização ganham os módulos novos sem você mexer
+em nada. Para desligar um módulo, desmarque `Enabled` nele em vez de removê-lo.
+
 ## API de Blueprint (principais nós)
 
 **LUME Cinematic Camera** (componente; no ator use `Get Lume Camera`)
@@ -118,6 +141,12 @@ somam por prioridade.
   - Útil em cutscenes e sustos: por exemplo, aproximar e fechar o FOV por 2 segundos.
 - `Get Current Framing`, `Get Camera State`, `Get Zone Weight(Zone)`, `Get Camera Yaw Rotation`
 - `Find Module By Class`, `Add Module`
+
+- `Play Shake(Preset, Scale, Direction)`, `Add Trauma`, `Add Camera Impulse`, `Set Continuous Shake`, `Set Look Input`
+
+**Nós globais** (funcionam em qualquer Blueprint)
+- `Get Active LUME Camera`, `LUME Shake Camera`, `LUME Shake At Location`, `LUME Camera Impulse`,
+  `LUME Set Continuous Shake`, `LUME Set Look Input`
 
 **LUME Camera Subsystem** (nó *Get LumeCameraSubsystem*)
 - `Activate Camera`, `Push Camera`, `Pop Camera` (recebem qualquer ator com câmera), `Get Active Camera`, `Get Active Camera Actor`
@@ -149,7 +178,10 @@ módulo na lista `Modules` da câmera.
 ## Receitas
 
 - **Terceira pessoa com órbita livre**: em `Rotation`, use `Mode = Control Rotation`; `ScreenOffset = (0.25, 0)` deixa o personagem por cima do ombro.
-- **2.5D / plataforma lateral**: `World Fixed` com `Rotation = (0, 90, 0)`, `DeadZone = (60, 80)`, `LookAheadDistance = 250` e LUME Camera Bounds nos limites da fase.
+- **2.5D / plataforma lateral**: `World Fixed` com Yaw perpendicular ao eixo do movimento, `Distance = 900`,
+  `FOV = 50`, `Pitch = -8`, `DeadZone = (40, 90)`, `LookAheadDistance = 250` e o módulo **Collision desligado**.
+  Use LUME Camera Bounds nos limites da fase, Interest Points em portas e chefões, `Set Look Input` no
+  analógico direito e o tremor automático de aterrissagem. O passo a passo está na Etapa 10 de [INSTALACAO.md](INSTALACAO.md).
 - **Survival horror de câmeras fixas**: uma zona por sala com `Use Fixed Viewpoint` e o preset Terror. Posicione o `FixedViewpoint` no canto da sala.
 - **Câmera ignora o personagem em cutscene**: `Set Target` para um ator da cena com `bSnap = false`, para a câmera viajar até ele.
 
@@ -165,8 +197,10 @@ Source/LumeCinematicCamera/
     LumeCameraZoneProfile.h      ULumeCameraZoneProfile (Data Asset)
     LumeCameraBoundsVolume.h     ALumeCameraBoundsVolume
     LumeCameraSubsystem.h        ULumeCameraSubsystem
+    LumeInterestPointComponent.h ULumeInterestPointComponent, ALumeCameraInterestPoint
+    LumeCameraLibrary.h          Nós globais de Blueprint (tremor, olhar em volta)
     LumeCameraTypes.h            Enquadramento, overrides, presets, estado, contexto
     LumeCameraMath.h             SmoothDamp e utilidades de caixa
     Modules/                     Tracking, Framing, Rotation, DynamicZoom, Collision,
-                                 Bounds, DepthOfField, HandheldNoise, Blueprint Module
+                                 Bounds, DepthOfField, HandheldNoise, Interest, Shake, Blueprint Module
 ```

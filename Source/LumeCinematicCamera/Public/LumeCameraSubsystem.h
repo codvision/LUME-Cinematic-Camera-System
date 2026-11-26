@@ -8,6 +8,7 @@
 class ALumeCameraZone;
 class ALumeCameraBoundsVolume;
 class ULumeCinematicCameraComponent;
+class ULumeInterestPointComponent;
 class APlayerController;
 class AActor;
 
@@ -35,7 +36,11 @@ public:
 	void RegisterCamera(ULumeCinematicCameraComponent* Camera);
 	void UnregisterCamera(ULumeCinematicCameraComponent* Camera);
 
+	void RegisterInterestPoint(ULumeInterestPointComponent* Point);
+	void UnregisterInterestPoint(ULumeInterestPointComponent* Point);
+
 	const TArray<TObjectPtr<ALumeCameraZone>>& GetZones() const { return Zones; }
+	const TArray<TObjectPtr<ULumeInterestPointComponent>>& GetInterestPoints() const { return InterestPoints; }
 	const TArray<TObjectPtr<ALumeCameraBoundsVolume>>& GetBoundsVolumes() const { return BoundsVolumes; }
 
 	UFUNCTION(BlueprintPure, Category = "LUME|Camera")
@@ -100,6 +105,9 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<ULumeCinematicCameraComponent>> Cameras;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<ULumeInterestPointComponent>> InterestPoints;
 
 	TMap<TWeakObjectPtr<APlayerController>, FCameraStack> Stacks;
 };
