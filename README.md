@@ -10,6 +10,8 @@ reordenar e trocar os módulos no editor, ou criar novos em C++ ou Blueprint.
 
 ## Instalação
 
+> Iniciante? Siga o passo a passo completo em [INSTALACAO.md](INSTALACAO.md).
+
 1. Copie esta pasta para `SeuProjeto/Plugins/LumeCinematicCamera/`.
 2. Gere os arquivos do projeto (botão direito no `.uproject` → *Generate Visual Studio project files*) e compile.
 3. No editor: **Edit → Plugins → LUME Cinematic Camera System** (deve aparecer ativado).
