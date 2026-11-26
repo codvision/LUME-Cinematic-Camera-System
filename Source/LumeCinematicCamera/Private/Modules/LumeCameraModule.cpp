@@ -1,9 +1,9 @@
 #include "Modules/LumeCameraModule.h"
-#include "LumeCinematicCameraActor.h"
+#include "LumeCinematicCameraComponent.h"
 
-ALumeCinematicCamera* ULumeCameraModule::GetOwningCamera() const
+ULumeCinematicCameraComponent* ULumeCameraModule::GetOwningCamera() const
 {
-	return Cast<ALumeCinematicCamera>(GetOuter());
+	return Cast<ULumeCinematicCameraComponent>(GetOuter());
 }
 
 UWorld* ULumeCameraModule::GetWorld() const

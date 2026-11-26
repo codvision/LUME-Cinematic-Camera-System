@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "LumeCameraTypes.generated.h"
 
-class ALumeCinematicCamera;
+class ULumeCinematicCameraComponent;
 class UBoxComponent;
 
 /** Ponto do alvo usado como referência de rastreamento. */
@@ -327,7 +327,7 @@ struct LUMECINEMATICCAMERA_API FLumeCameraContext
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadOnly, Category = "LUME")
-	TObjectPtr<ALumeCinematicCamera> Camera = nullptr;
+	TObjectPtr<ULumeCinematicCameraComponent> Camera = nullptr;
 
 	UPROPERTY(BlueprintReadOnly, Category = "LUME")
 	TObjectPtr<AActor> Target = nullptr;

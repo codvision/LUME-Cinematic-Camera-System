@@ -7,14 +7,18 @@
 
 class ALumeCameraZone;
 class ALumeCameraBoundsVolume;
-class ALumeCinematicCamera;
+class ULumeCinematicCameraComponent;
 class APlayerController;
+class AActor;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FLumeActiveCameraChanged, APlayerController*, PlayerController, ALumeCinematicCamera*, NewCamera);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FLumeActiveCameraChanged, APlayerController*, PlayerController, AActor*, NewCameraActor);
 
 /**
  * Registro central do LUME no mundo: zonas, volumes de limite e câmeras,
  * além do controle de qual câmera está ativa (com transições suaves e pilha push/pop).
+ *
+ * "Camera Actor" pode ser um ator LUME Cinematic Camera ou um personagem que tem o
+ * componente LUME Cinematic Camera (qualquer ator com câmera funciona).
  */
 UCLASS()
 class LUMECINEMATICCAMERA_API ULumeCameraSubsystem : public UWorldSubsystem
@@ -28,14 +32,14 @@ public:
 	void UnregisterZone(ALumeCameraZone* Zone);
 	void RegisterBoundsVolume(ALumeCameraBoundsVolume* Volume);
 	void UnregisterBoundsVolume(ALumeCameraBoundsVolume* Volume);
-	void RegisterCamera(ALumeCinematicCamera* Camera);
-	void UnregisterCamera(ALumeCinematicCamera* Camera);
+	void RegisterCamera(ULumeCinematicCameraComponent* Camera);
+	void UnregisterCamera(ULumeCinematicCameraComponent* Camera);
 
 	const TArray<TObjectPtr<ALumeCameraZone>>& GetZones() const { return Zones; }
 	const TArray<TObjectPtr<ALumeCameraBoundsVolume>>& GetBoundsVolumes() const { return BoundsVolumes; }
 
 	UFUNCTION(BlueprintPure, Category = "LUME|Camera")
-	TArray<ALumeCinematicCamera*> GetAllCameras() const;
+	TArray<ULumeCinematicCameraComponent*> GetAllCameras() const;
 
 	UFUNCTION(BlueprintPure, Category = "LUME|Camera")
 	TArray<ALumeCameraZone*> GetAllZones() const;
@@ -44,21 +48,26 @@ public:
 
 	/** Ativa a câmera e reinicia a pilha. PlayerController vazio = primeiro jogador. */
 	UFUNCTION(BlueprintCallable, Category = "LUME|Camera", meta = (AdvancedDisplay = "BlendFunction,BlendExponent"))
-	void ActivateCamera(ALumeCinematicCamera* Camera, APlayerController* PlayerController = nullptr, float BlendTime = 0.5f,
+	void ActivateCamera(AActor* CameraActor, APlayerController* PlayerController = nullptr, float BlendTime = 0.5f,
 		EViewTargetBlendFunction BlendFunction = VTBlend_EaseInOut, float BlendExponent = 2.f);
 
 	/** Empilha e ativa uma câmera temporária (ex.: ao entrar numa zona). */
 	UFUNCTION(BlueprintCallable, Category = "LUME|Camera", meta = (AdvancedDisplay = "BlendFunction,BlendExponent"))
-	void PushCamera(ALumeCinematicCamera* Camera, APlayerController* PlayerController = nullptr, float BlendTime = 0.5f,
+	void PushCamera(AActor* CameraActor, APlayerController* PlayerController = nullptr, float BlendTime = 0.5f,
 		EViewTargetBlendFunction BlendFunction = VTBlend_EaseInOut, float BlendExponent = 2.f);
 
-	/** Remove a câmera da pilha; se ela estava ativa, volta para a anterior. */
+	/** Remove a câmera da pilha; se ela estava ativa, volta para a anterior (ou para o personagem). */
 	UFUNCTION(BlueprintCallable, Category = "LUME|Camera", meta = (AdvancedDisplay = "BlendFunction,BlendExponent"))
-	void PopCamera(ALumeCinematicCamera* Camera, APlayerController* PlayerController = nullptr, float BlendTime = 0.5f,
+	void PopCamera(AActor* CameraActor, APlayerController* PlayerController = nullptr, float BlendTime = 0.5f,
 		EViewTargetBlendFunction BlendFunction = VTBlend_EaseInOut, float BlendExponent = 2.f);
 
+	/** Ator de câmera ativo do jogador. */
 	UFUNCTION(BlueprintPure, Category = "LUME|Camera")
-	ALumeCinematicCamera* GetActiveCamera(APlayerController* PlayerController = nullptr) const;
+	AActor* GetActiveCameraActor(APlayerController* PlayerController = nullptr) const;
+
+	/** Componente LUME da câmera ativa (nulo se a câmera ativa não for LUME). */
+	UFUNCTION(BlueprintPure, Category = "LUME|Camera")
+	ULumeCinematicCameraComponent* GetActiveCamera(APlayerController* PlayerController = nullptr) const;
 
 	UPROPERTY(BlueprintAssignable, Category = "LUME|Camera")
 	FLumeActiveCameraChanged OnActiveCameraChanged;
@@ -68,16 +77,20 @@ public:
 private:
 	struct FCameraStack
 	{
-		TArray<TWeakObjectPtr<ALumeCinematicCamera>> Cameras;
+		TArray<TWeakObjectPtr<AActor>> Actors;
 
 		void Compact()
 		{
-			Cameras.RemoveAll([](const TWeakObjectPtr<ALumeCinematicCamera>& C) { return !C.IsValid(); });
+			Actors.RemoveAll([](const TWeakObjectPtr<AActor>& A) { return !A.IsValid(); });
+		}
+		void RemoveActor(const AActor* Actor)
+		{
+			Actors.RemoveAll([Actor](const TWeakObjectPtr<AActor>& A) { return A.Get() == Actor; });
 		}
 	};
 
 	APlayerController* ResolvePlayerController(APlayerController* PlayerController) const;
-	void SetViewTarget(APlayerController* PC, ALumeCinematicCamera* Camera, float BlendTime, EViewTargetBlendFunction BlendFunction, float BlendExponent);
+	void SetViewTarget(APlayerController* PC, AActor* CameraActor, float BlendTime, EViewTargetBlendFunction BlendFunction, float BlendExponent);
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<ALumeCameraZone>> Zones;
@@ -86,7 +99,7 @@ private:
 	TArray<TObjectPtr<ALumeCameraBoundsVolume>> BoundsVolumes;
 
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<ALumeCinematicCamera>> Cameras;
+	TArray<TObjectPtr<ULumeCinematicCameraComponent>> Cameras;
 
 	TMap<TWeakObjectPtr<APlayerController>, FCameraStack> Stacks;
 };

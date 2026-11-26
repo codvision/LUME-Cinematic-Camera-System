@@ -5,7 +5,7 @@
 #include "LumeCameraTypes.h"
 #include "LumeCameraModule.generated.h"
 
-class ALumeCinematicCamera;
+class ULumeCinematicCameraComponent;
 
 /**
  * Base de todos os módulos do LUME.
@@ -38,7 +38,7 @@ public:
 
 	/** Câmera dona deste módulo. */
 	UFUNCTION(BlueprintPure, Category = "LUME|Module")
-	ALumeCinematicCamera* GetOwningCamera() const;
+	ULumeCinematicCameraComponent* GetOwningCamera() const;
 
 	virtual UWorld* GetWorld() const override;
 };

@@ -11,6 +11,7 @@ class UArrowComponent;
 class UPrimitiveComponent;
 class ULumeCameraZoneProfile;
 class ALumeCinematicCamera;
+class ULumeCinematicCameraComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FLumeZonePlayerEvent, AActor*, PlayerActor);
 
@@ -64,9 +65,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LUME|Zone", meta = (ClampMin = "0", Units = "s"))
 	float BlendOutTime = 1.25f;
 
-	/** Câmeras afetadas. Vazio = todas as LUME Cameras. */
+	/** Câmeras afetadas (atores LUME Camera ou personagens com o componente). Vazio = todas. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LUME|Zone")
-	TArray<TObjectPtr<ALumeCinematicCamera>> AffectedCameras;
+	TArray<TObjectPtr<AActor>> AffectedCameras;
 
 	// ---------- Enquadramento ----------
 
@@ -125,7 +126,7 @@ public:
 	bool ContainsPoint(const FVector& Point) const;
 
 	UFUNCTION(BlueprintPure, Category = "LUME|Zone")
-	bool AffectsCamera(const ALumeCinematicCamera* Camera) const;
+	bool AffectsCamera(const ULumeCinematicCameraComponent* Camera) const;
 
 	UFUNCTION(BlueprintPure, Category = "LUME|Zone")
 	FVector GetFixedViewpointLocation() const;

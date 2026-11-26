@@ -3,6 +3,7 @@
 #include "LumeCameraSubsystem.h"
 #include "LumeCameraZoneProfile.h"
 #include "LumeCinematicCameraActor.h"
+#include "LumeCinematicCameraComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/ArrowComponent.h"
 #include "GameFramework/Pawn.h"
@@ -70,15 +71,16 @@ bool ALumeCameraZone::ContainsPoint(const FVector& Point) const
 	return LumeMath::IsPointInsideBox(ZoneBox, Point);
 }
 
-bool ALumeCameraZone::AffectsCamera(const ALumeCinematicCamera* Camera) const
+bool ALumeCameraZone::AffectsCamera(const ULumeCinematicCameraComponent* Camera) const
 {
 	if (AffectedCameras.Num() == 0)
 	{
 		return true;
 	}
-	for (const TObjectPtr<ALumeCinematicCamera>& Affected : AffectedCameras)
+	const AActor* CameraOwner = Camera ? Camera->GetOwner() : nullptr;
+	for (const TObjectPtr<AActor>& Affected : AffectedCameras)
 	{
-		if (Affected == Camera)
+		if (Affected && Affected == CameraOwner)
 		{
 			return true;
 		}
@@ -144,7 +146,7 @@ void ALumeCameraZone::HandleBeginOverlap(UPrimitiveComponent* OverlappedComponen
 		if (ULumeCameraSubsystem* Subsystem = GetWorld()->GetSubsystem<ULumeCameraSubsystem>())
 		{
 			APlayerController* PC = Cast<APlayerController>(CastChecked<APawn>(OtherActor)->GetController());
-			Subsystem->PushCamera(CameraToActivate, PC, CameraTransitionTime, CameraTransitionFunction, CameraTransitionExponent);
+			Subsystem->PushCamera(CameraToActivate.Get(), PC, CameraTransitionTime, CameraTransitionFunction, CameraTransitionExponent);
 		}
 	}
 
@@ -171,7 +173,7 @@ void ALumeCameraZone::HandleEndOverlap(UPrimitiveComponent* OverlappedComponent,
 		{
 			const APawn* Pawn = Cast<APawn>(OtherActor);
 			APlayerController* PC = Pawn ? Cast<APlayerController>(Pawn->GetController()) : nullptr;
-			Subsystem->PopCamera(CameraToActivate, PC, CameraTransitionTime, CameraTransitionFunction, CameraTransitionExponent);
+			Subsystem->PopCamera(CameraToActivate.Get(), PC, CameraTransitionTime, CameraTransitionFunction, CameraTransitionExponent);
 		}
 	}
 

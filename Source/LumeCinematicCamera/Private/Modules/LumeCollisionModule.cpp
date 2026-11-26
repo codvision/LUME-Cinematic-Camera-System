@@ -1,6 +1,6 @@
 #include "Modules/LumeCollisionModule.h"
 #include "LumeCameraMath.h"
-#include "LumeCinematicCameraActor.h"
+#include "LumeCinematicCameraComponent.h"
 #include "Engine/World.h"
 #include "CollisionQueryParams.h"
 
@@ -23,7 +23,10 @@ void ULumeCollisionModule::UpdateModule(const FLumeCameraContext& Context, FLume
 	const FVector Direction = ToCamera / DesiredDistance;
 
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(LumeCameraCollision), false);
-	Params.AddIgnoredActor(Context.Camera.Get());
+	if (Context.Camera)
+	{
+		Params.AddIgnoredActor(Context.Camera->GetOwner());
+	}
 	if (Context.Target)
 	{
 		Params.AddIgnoredActor(Context.Target.Get());

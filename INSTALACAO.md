@@ -113,27 +113,42 @@ Faça a compilação pelo Visual Studio para ver o erro:
 
 ---
 
-## Etapa 7: Usar a câmera pela primeira vez
+## Etapa 7: Colocar a câmera no personagem
 
-1. Abra o painel **Place Actors**: menu **Window → Place Actors**, ou o botão **+** na barra de cima.
-2. Pesquise **LUME**. Vão aparecer:
-   - **LUME Cinematic Camera**
-   - **LUME Camera Zone**
-   - **LUME Camera Bounds**
-3. Arraste uma **LUME Cinematic Camera** para qualquer lugar do mapa. A posição não importa.
-4. Clique em **Play** (▶). A câmera passa a seguir o seu personagem.
+1. No **Content Browser**, abra a Blueprint do seu personagem.
+   No template Third Person ela fica em `Content/ThirdPerson/Blueprints/BP_ThirdPersonCharacter`.
+2. No painel **Components** (canto superior esquerdo), clique em **+ Add**.
+3. Pesquise **LUME** e escolha **LUME Cinematic Camera**.
+   Tanto faz onde ela fica na lista, porque a câmera não herda o movimento do personagem.
+4. Clique em **Compile** e depois em **Save** (botões no topo da Blueprint).
+5. Clique em **Play ▶**. A câmera LUME passa a seguir o personagem.
+   A câmera antiga do template (`FollowCamera`) é desligada sozinha. Você pode deixá-la ou apagá-la.
 
-**Ajustes básicos.** Selecione a câmera no mapa e, no painel **Details**, procure a seção **LUME | Framing**:
-- **Distance**: distância até o personagem.
-- **Field Of View**: zoom da lente.
-- **Rotation**: ângulo. Em *Pitch*, valores negativos fazem a câmera olhar mais de cima.
-- **Screen Offset**: posição do personagem na tela. X = 0.33 deixa ele à direita.
+**Onde ficam as configurações.** Na Blueprint do personagem, clique no componente **LumeCinematicCamera**.
+O painel **Details** (à direita) mostra tudo:
+- **LUME | Framing**
+  - **Distance**: distância até o personagem.
+  - **Field Of View**: zoom da lente.
+  - **Rotation**: ângulo. Em *Pitch*, valores negativos fazem a câmera olhar mais de cima.
+  - **Screen Offset**: posição do personagem na tela. X = 0.33 deixa ele à direita.
+- **LUME | Modules**: os módulos (rastreamento, zoom, profundidade de campo...). Clique na setinha de cada um para abrir as opções.
+- **LUME | Target / Activation / Debug**: alvo, ativação e depuração.
 
-> 💡 Ajuste os valores **enquanto o jogo está rodando** para ver o efeito na hora.
-> Mas o que você muda durante o Play é desfeito ao parar. Anote os valores e coloque-os de novo depois.
+**Controles.** No modo padrão (**World Fixed**, câmera com ângulo fixo), a opção
+**Align Controls To Camera** faz "W / analógico para frente" sempre andar "para dentro da tela".
+Não precisa mexer em nada na Blueprint do personagem.
 
-**Jogo com câmera controlada pelo mouse (terceira pessoa).** Na lista **LUME | Modules**, abra
-**Rotation** e mude **Mode** para **Control Rotation**.
+**Câmera controlada pelo mouse (terceira pessoa clássica).** Em **LUME | Modules → Rotation**, mude
+**Mode** para **Control Rotation**.
+
+> 💡 Para testar valores rápido: dê Play, aperte **F8** (solta o mouse do jogo), selecione o
+> personagem no **Outliner**, clique no componente LUME e mude os valores. O efeito aparece na hora.
+> O que você muda durante o Play é desfeito ao parar, então anote os valores e coloque-os depois na Blueprint.
+
+### Alternativa: câmera solta no mundo
+Arraste o ator **LUME Cinematic Camera** (painel **Place Actors**) para o mapa. Isso serve para
+câmeras secundárias, ativadas por zonas ou cutscenes. Se quiser que esse ator seja a câmera
+principal, marque **Take Over Player View** nele, e então não adicione o componente no personagem.
 
 ---
 
@@ -148,7 +163,7 @@ Extras da zona:
 - **Use Fixed Viewpoint**: a câmera vai para um ponto fixo da sala (a seta vermelha) e acompanha o
   jogador girando. Mova o componente **FixedViewpoint** para posicionar esse ponto.
 - **Constrain Camera To Zone**: a câmera não sai da caixa.
-- **Camera To Activate**: troca para outra LUME Camera ao entrar. Nessa outra câmera, **desmarque** `Auto Activate`.
+- **Camera To Activate**: troca para um ator LUME Cinematic Camera do mapa ao entrar e volta para a câmera do personagem ao sair.
 
 ## Etapa 9: Limitar a câmera (opcional)
 
@@ -162,10 +177,11 @@ Arraste uma **LUME Camera Bounds** e ajuste a caixa azul. A câmera nunca sai de
 |---|---|
 | "Missing modules" e não compila | Visual Studio não instalado ou faltam as cargas de trabalho C++ (Etapa 1). Ou o projeto não tem C++ (Etapa 2). |
 | O plugin não aparece em Edit → Plugins | O `.uplugin` está na pasta errada (Etapa 4). |
-| Não acho "LUME" no Place Actors | O plugin não compilou. Refaça a Etapa 5. |
-| A câmera não assume a visão | Verifique se `Auto Activate` está marcado e se só **uma** câmera LUME tem essa opção marcada. |
+| Não acho "LUME" no + Add nem no Place Actors | O plugin não compilou. Refaça a Etapa 5. |
+| Continua aparecendo a câmera antiga | No componente LUME, confira se **Take Over Player View** e **Deactivate Other Cameras** estão marcados. Se houver um ator LUME no mapa com **Take Over Player View** marcado, desmarque. |
+| Andar para frente vai para o lado errado | No componente LUME, marque **Align Controls To Camera** (funciona no modo World Fixed). |
 | A câmera segue o personagem errado | Em **LUME / Target**, escolha o **Target Actor** manualmente. |
 | A zona não faz efeito | O personagem (o centro da cápsula) precisa estar **dentro** da caixa. Confira se `Enabled` está marcado. |
-| Quero ver o que a câmera está fazendo | Marque **Draw Debug** na câmera. Aparecem esferas, setas e o peso das zonas no canto da tela. |
+| Quero ver o que a câmera está fazendo | Marque **Draw Debug** no componente LUME. Aparecem esferas, setas e o peso das zonas no canto da tela. |
 
 Se travar em qualquer etapa, mande o print ou o texto do erro.

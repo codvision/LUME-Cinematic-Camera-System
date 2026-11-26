@@ -1,13 +1,11 @@
 #include "Modules/LumeDepthOfFieldModule.h"
 #include "LumeCameraMath.h"
-#include "LumeCinematicCameraActor.h"
-#include "Camera/CameraComponent.h"
+#include "LumeCinematicCameraComponent.h"
 
 void ULumeDepthOfFieldModule::UpdateModule(const FLumeCameraContext& Context, FLumeCameraState& State)
 {
 	const FLumeFramingSettings& F = Context.Framing;
-	ALumeCinematicCamera* Camera = Context.Camera;
-	UCameraComponent* CameraComponent = Camera ? Camera->GetCameraComponent() : nullptr;
+	ULumeCinematicCameraComponent* CameraComponent = Context.Camera;
 	if (!CameraComponent)
 	{
 		return;

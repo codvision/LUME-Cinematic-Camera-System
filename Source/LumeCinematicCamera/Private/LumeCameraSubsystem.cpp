@@ -2,7 +2,7 @@
 #include "LumeCinematicCamera.h"
 #include "LumeCameraZone.h"
 #include "LumeCameraBoundsVolume.h"
-#include "LumeCinematicCameraActor.h"
+#include "LumeCinematicCameraComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
 
@@ -32,7 +32,7 @@ void ULumeCameraSubsystem::UnregisterBoundsVolume(ALumeCameraBoundsVolume* Volum
 	BoundsVolumes.Remove(Volume);
 }
 
-void ULumeCameraSubsystem::RegisterCamera(ALumeCinematicCamera* Camera)
+void ULumeCameraSubsystem::RegisterCamera(ULumeCinematicCameraComponent* Camera)
 {
 	if (Camera)
 	{
@@ -40,19 +40,15 @@ void ULumeCameraSubsystem::RegisterCamera(ALumeCinematicCamera* Camera)
 	}
 }
 
-void ULumeCameraSubsystem::UnregisterCamera(ALumeCinematicCamera* Camera)
+void ULumeCameraSubsystem::UnregisterCamera(ULumeCinematicCameraComponent* Camera)
 {
 	Cameras.Remove(Camera);
-	for (TPair<TWeakObjectPtr<APlayerController>, FCameraStack>& Pair : Stacks)
-	{
-		Pair.Value.Cameras.Remove(Camera);
-	}
 }
 
-TArray<ALumeCinematicCamera*> ULumeCameraSubsystem::GetAllCameras() const
+TArray<ULumeCinematicCameraComponent*> ULumeCameraSubsystem::GetAllCameras() const
 {
-	TArray<ALumeCinematicCamera*> Result;
-	for (ALumeCinematicCamera* Camera : Cameras)
+	TArray<ULumeCinematicCameraComponent*> Result;
+	for (ULumeCinematicCameraComponent* Camera : Cameras)
 	{
 		if (IsValid(Camera))
 		{
@@ -85,95 +81,117 @@ APlayerController* ULumeCameraSubsystem::ResolvePlayerController(APlayerControll
 	return World ? World->GetFirstPlayerController() : nullptr;
 }
 
-void ULumeCameraSubsystem::SetViewTarget(APlayerController* PC, ALumeCinematicCamera* Camera, float BlendTime,
+void ULumeCameraSubsystem::SetViewTarget(APlayerController* PC, AActor* CameraActor, float BlendTime,
 	EViewTargetBlendFunction BlendFunction, float BlendExponent)
 {
-	if (!PC || !IsValid(Camera))
+	if (!PC || !IsValid(CameraActor))
 	{
 		return;
 	}
-	// Impede que a possessão do pawn roube o view target.
-	PC->bAutoManageActiveCameraTarget = false;
-	PC->SetViewTargetWithBlend(Camera, FMath::Max(0.f, BlendTime), BlendFunction, BlendExponent);
-	OnActiveCameraChanged.Broadcast(PC, Camera);
 
-	UE_LOG(LogLumeCamera, Verbose, TEXT("LUME: '%s' ativa para '%s' (blend %.2fs)"), *Camera->GetName(), *PC->GetName(), BlendTime);
+	// Câmera no próprio personagem: deixa a Unreal gerenciar (respawn volta sozinho para o novo personagem).
+	// Câmera solta no mundo: impede que a possessão do pawn roube a visão.
+	PC->bAutoManageActiveCameraTarget = (CameraActor == PC->GetPawn());
+
+	if (PC->GetViewTarget() != CameraActor)
+	{
+		PC->SetViewTargetWithBlend(CameraActor, FMath::Max(0.f, BlendTime), BlendFunction, BlendExponent);
+	}
+	OnActiveCameraChanged.Broadcast(PC, CameraActor);
+
+	UE_LOG(LogLumeCamera, Verbose, TEXT("LUME: '%s' ativa para '%s' (blend %.2fs)"), *CameraActor->GetName(), *PC->GetName(), BlendTime);
 }
 
-void ULumeCameraSubsystem::ActivateCamera(ALumeCinematicCamera* Camera, APlayerController* PlayerController, float BlendTime,
+void ULumeCameraSubsystem::ActivateCamera(AActor* CameraActor, APlayerController* PlayerController, float BlendTime,
 	EViewTargetBlendFunction BlendFunction, float BlendExponent)
 {
 	APlayerController* PC = ResolvePlayerController(PlayerController);
-	if (!PC || !IsValid(Camera))
+	if (!PC || !IsValid(CameraActor))
 	{
 		return;
 	}
-	FCameraStack& Stack = Stacks.FindOrAdd(PC);
-	Stack.Cameras.Reset();
-	Stack.Cameras.Add(Camera);
-	SetViewTarget(PC, Camera, BlendTime, BlendFunction, BlendExponent);
+	FCameraStack& Stack = Stacks.FindOrAdd(TWeakObjectPtr<APlayerController>(PC));
+	Stack.Actors.Reset();
+	Stack.Actors.Add(TWeakObjectPtr<AActor>(CameraActor));
+	SetViewTarget(PC, CameraActor, BlendTime, BlendFunction, BlendExponent);
 }
 
-void ULumeCameraSubsystem::PushCamera(ALumeCinematicCamera* Camera, APlayerController* PlayerController, float BlendTime,
+void ULumeCameraSubsystem::PushCamera(AActor* CameraActor, APlayerController* PlayerController, float BlendTime,
 	EViewTargetBlendFunction BlendFunction, float BlendExponent)
 {
 	APlayerController* PC = ResolvePlayerController(PlayerController);
-	if (!PC || !IsValid(Camera))
+	if (!PC || !IsValid(CameraActor))
 	{
 		return;
 	}
-	FCameraStack& Stack = Stacks.FindOrAdd(PC);
+	FCameraStack& Stack = Stacks.FindOrAdd(TWeakObjectPtr<APlayerController>(PC));
 	Stack.Compact();
-	if (Stack.Cameras.Num() > 0 && Stack.Cameras.Last().Get() == Camera)
+
+	// Garante que a visão atual (ex.: o personagem) fique na base da pilha para o "voltar".
+	if (Stack.Actors.Num() == 0)
+	{
+		if (AActor* Current = PC->GetViewTarget())
+		{
+			if (Current != CameraActor)
+			{
+				Stack.Actors.Add(TWeakObjectPtr<AActor>(Current));
+			}
+		}
+	}
+
+	if (Stack.Actors.Num() > 0 && Stack.Actors.Last().Get() == CameraActor)
 	{
 		return;
 	}
-	Stack.Cameras.Remove(Camera);
-	Stack.Cameras.Add(Camera);
-	SetViewTarget(PC, Camera, BlendTime, BlendFunction, BlendExponent);
+	Stack.RemoveActor(CameraActor);
+	Stack.Actors.Add(TWeakObjectPtr<AActor>(CameraActor));
+	SetViewTarget(PC, CameraActor, BlendTime, BlendFunction, BlendExponent);
 }
 
-void ULumeCameraSubsystem::PopCamera(ALumeCinematicCamera* Camera, APlayerController* PlayerController, float BlendTime,
+void ULumeCameraSubsystem::PopCamera(AActor* CameraActor, APlayerController* PlayerController, float BlendTime,
 	EViewTargetBlendFunction BlendFunction, float BlendExponent)
 {
 	APlayerController* PC = ResolvePlayerController(PlayerController);
-	if (!PC || !Camera)
+	if (!PC || !CameraActor)
 	{
 		return;
 	}
-	FCameraStack* Stack = Stacks.Find(PC);
+	FCameraStack* Stack = Stacks.Find(TWeakObjectPtr<APlayerController>(PC));
 	if (!Stack)
 	{
 		return;
 	}
 	Stack->Compact();
-	const bool bWasActive = Stack->Cameras.Num() > 0 && Stack->Cameras.Last().Get() == Camera;
-	Stack->Cameras.Remove(Camera);
+	const bool bWasActive = Stack->Actors.Num() > 0 && Stack->Actors.Last().Get() == CameraActor;
+	Stack->RemoveActor(CameraActor);
 
-	if (bWasActive && Stack->Cameras.Num() > 0)
+	if (!bWasActive)
 	{
-		SetViewTarget(PC, Stack->Cameras.Last().Get(), BlendTime, BlendFunction, BlendExponent);
+		return;
+	}
+
+	if (Stack->Actors.Num() > 0)
+	{
+		SetViewTarget(PC, Stack->Actors.Last().Get(), BlendTime, BlendFunction, BlendExponent);
+	}
+	else if (APawn* Pawn = PC->GetPawn())
+	{
+		// Nada na pilha: volta para o personagem.
+		Stack->Actors.Add(TWeakObjectPtr<AActor>(Pawn));
+		SetViewTarget(PC, Pawn, BlendTime, BlendFunction, BlendExponent);
 	}
 }
 
-ALumeCinematicCamera* ULumeCameraSubsystem::GetActiveCamera(APlayerController* PlayerController) const
+AActor* ULumeCameraSubsystem::GetActiveCameraActor(APlayerController* PlayerController) const
 {
 	APlayerController* PC = ResolvePlayerController(PlayerController);
-	if (!PC)
-	{
-		return nullptr;
-	}
-	if (const FCameraStack* Stack = Stacks.Find(PC))
-	{
-		for (int32 Index = Stack->Cameras.Num() - 1; Index >= 0; --Index)
-		{
-			if (ALumeCinematicCamera* Camera = Stack->Cameras[Index].Get())
-			{
-				return Camera;
-			}
-		}
-	}
-	return nullptr;
+	return PC ? PC->GetViewTarget() : nullptr;
+}
+
+ULumeCinematicCameraComponent* ULumeCameraSubsystem::GetActiveCamera(APlayerController* PlayerController) const
+{
+	const AActor* ViewTarget = GetActiveCameraActor(PlayerController);
+	return ViewTarget ? ViewTarget->FindComponentByClass<ULumeCinematicCameraComponent>() : nullptr;
 }
 
 void ULumeCameraSubsystem::Deinitialize()

@@ -2,9 +2,14 @@
 
 Sistema **modular** de câmera cinematográfica para **Unreal Engine 5.7** (C++ e Blueprint).
 
-A câmera é um **ator independente**: não fica presa ao personagem nem a um spring arm no mesh.
-Ela só observa um alvo e roda uma lista de módulos (um "pipeline"). Você pode ligar, desligar,
-reordenar e trocar os módulos no editor, ou criar novos em C++ ou Blueprint.
+A câmera é um **componente** (`LUME Cinematic Camera`) que você adiciona na Blueprint do personagem.
+Todas as configurações aparecem no painel Details. Mesmo dentro do personagem, ela é **independente**:
+usa transform absoluto, então cápsula, mesh e animações não a movem. Ela só observa um alvo e roda
+uma lista de módulos (um "pipeline"). Você pode ligar, desligar, reordenar e trocar os módulos no
+editor, ou criar novos em C++ ou Blueprint.
+
+Também existe o **ator** `LUME Cinematic Camera`, que carrega o mesmo componente, para câmeras
+soltas no mundo: câmeras secundárias, cutscenes, câmeras fixas.
 
 ---
 
@@ -21,9 +26,10 @@ reordenar e trocar os módulos no editor, ou criar novos em C++ ou Blueprint.
 
 ## Uso rápido
 
-1. Arraste um **LUME Cinematic Camera** para o nível.
-2. Deixe ligados `Auto Target Player Pawn` e `Auto Activate`. A câmera vai seguir o jogador e assumir a visão.
-3. Ajuste o **Base Framing**: distância, FOV, rotação, posição na tela etc.
+1. Abra a Blueprint do personagem → **Add** → **LUME Cinematic Camera** (pode ficar em qualquer lugar da hierarquia).
+2. Pronto: com `Auto Target` e `Take Over Player View` ligados, ela segue o personagem e assume a visão.
+   As outras câmeras do personagem (ex.: a `FollowCamera` do template) são desativadas sozinhas (`Deactivate Other Cameras`).
+3. Ajuste o **Base Framing** no Details do componente: distância, FOV, rotação, posição na tela etc.
 4. Coloque **LUME Camera Zones** nos ambientes e escolha um preset (Corredor, Sala Grande, Terror).
 5. Opcional: coloque **LUME Camera Bounds** para limitar por onde a câmera pode andar.
 6. Ligue `Draw Debug` na câmera para ver pivô, zona morta, antecipação e o peso de cada zona.
@@ -33,7 +39,8 @@ reordenar e trocar os módulos no editor, ou criar novos em C++ ou Blueprint.
 ## Arquitetura
 
 ```
-ALumeCinematicCamera  (ator independente, tick em PostPhysics, depois do movimento do personagem)
+ULumeCinematicCameraComponent  (UCameraComponent com transform absoluto, tick em PostPhysics;
+                                vai no personagem ou dentro do ator ALumeCinematicCamera)
  ├─ Alvo: TargetActor / pawn do jogador, com referência configurável
  ├─ BaseFraming  ─┐
  ├─ Zonas ────────┼─► mistura por prioridade com SmoothStep ─► Context.Framing
@@ -68,6 +75,7 @@ Se você remover um módulo, a câmera continua funcionando, só sem aquele comp
 - **Ajuste de enquadramento** (`Framing`): transição suave da posição na tela e *enquadramento de grupo*. Adicione inimigos ou objetos em `AdditionalTargets` (ou use `AddFramingTarget` em Blueprint) e a câmera desloca o pivô e se afasta para todos caberem na tela.
 - **Deslocamento horizontal/vertical**: `Framing.ScreenOffset`, de -1 a 1. Por exemplo, `(0.33, 0)` é a regra dos terços. `PivotOffset` define o ponto mirado (Z=50 mira no peito).
 - **Rotação suave** (`Rotation`): modos `World Fixed`, `Follow Target Heading`, `Follow Movement Direction` e `Control Rotation`. Mudanças de ângulo são sempre interpoladas.
+  Em `World Fixed`, `Align Controls To Camera` gira a Control Rotation junto com a câmera, então "frente" no controle é sempre "para dentro da tela" sem mudar a Blueprint do personagem.
 
 ## 3. Zonas cinematográficas: `LUME Camera Zone`
 
@@ -94,8 +102,8 @@ somam por prioridade.
 | Profundidade de campo | `Depth of Field`: foco automático no jogador com "puxar foco" suave. A abertura vem do enquadramento, então cada zona pode ter a sua. Também aplica vinheta e granulação. |
 | Transições suaves entre câmeras | `ULumeCameraSubsystem::ActivateCamera / PushCamera / PopCamera` (blend com curva e expoente), `ALumeCinematicCamera::ActivateCamera`, ou `Camera To Activate` nas zonas. |
 | Limites de movimentação | `LUME Camera Bounds`: vários volumes funcionam como uma união. O módulo `Bounds` tem margem e a opção de reapontar a câmera. Também respeita as zonas com restrição. |
-| Câmera independente das animações | Ator separado, rastreia a **localização do ator/cápsula** (não o mesh), compensa o agachamento (`Compensate Crouch`), estabiliza pulos e mede a velocidade pela posição. |
-| Referência do jogador configurável | `Target Actor` (escolha no editor), `Auto Target Player Pawn` + `Player Index`, `Tracking Reference` (Actor Location, Named Component ou Socket/Bone), `PivotOffset`. |
+| Câmera independente das animações | Transform absoluto (nem dentro do personagem herda movimento), rastreia a **localização do ator/cápsula** (não o mesh), compensa o agachamento (`Compensate Crouch`), estabiliza pulos e mede a velocidade pela posição. |
+| Referência do jogador configurável | `Target Actor` (escolha no editor), `Auto Target` (o próprio personagem, ou o pawn do jogador + `Player Index` no ator do mundo), `Tracking Reference` (Actor Location, Named Component ou Socket/Bone), `PivotOffset`. |
 | Colisão | `Collision`: sphere sweep. Aproxima na hora ao bater em algo e volta suavemente. |
 | Câmera na mão | `Handheld Noise`: ruído Perlin. Amplitude e frequência vêm do enquadramento. |
 
@@ -103,16 +111,16 @@ somam por prioridade.
 
 ## API de Blueprint (principais nós)
 
-**LUME Cinematic Camera**
+**LUME Cinematic Camera** (componente; no ator use `Get Lume Camera`)
 - `Set Target(Actor, bSnap)`, `Get Target`, `Snap To Target`
 - `Activate Camera(BlendTime, BlendFunction, BlendExponent)`
 - `Push Framing Override(Overrides, Priority, BlendIn, BlendOut)` → `Handle`; `Pop Framing Override(Handle)`; `Clear Framing Overrides`
   - Útil em cutscenes e sustos: por exemplo, aproximar e fechar o FOV por 2 segundos.
-- `Get Current Framing`, `Get Camera State`, `Get Zone Weight(Zone)`
+- `Get Current Framing`, `Get Camera State`, `Get Zone Weight(Zone)`, `Get Camera Yaw Rotation`
 - `Find Module By Class`, `Add Module`
 
 **LUME Camera Subsystem** (nó *Get LumeCameraSubsystem*)
-- `Activate Camera`, `Push Camera`, `Pop Camera`, `Get Active Camera`
+- `Activate Camera`, `Push Camera`, `Pop Camera` (recebem qualquer ator com câmera), `Get Active Camera`, `Get Active Camera Actor`
 - `Get All Cameras`, `Get All Zones`, evento `On Active Camera Changed`
 
 ## Criando seus próprios módulos
@@ -151,7 +159,8 @@ módulo na lista `Modules` da câmera.
 LumeCinematicCamera.uplugin
 Source/LumeCinematicCamera/
   Public/
-    LumeCinematicCameraActor.h   ALumeCinematicCamera
+    LumeCinematicCameraComponent.h ULumeCinematicCameraComponent (a câmera)
+    LumeCinematicCameraActor.h   ALumeCinematicCamera (ator do mundo com o componente)
     LumeCameraZone.h             ALumeCameraZone
     LumeCameraZoneProfile.h      ULumeCameraZoneProfile (Data Asset)
     LumeCameraBoundsVolume.h     ALumeCameraBoundsVolume
