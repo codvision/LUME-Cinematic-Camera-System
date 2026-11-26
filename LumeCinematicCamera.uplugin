@@ -1,0 +1,25 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0.0",
+	"FriendlyName": "LUME Cinematic Camera System",
+	"Description": "Sistema modular de câmera cinematográfica: rastreamento inteligente, câmera dinâmica, zonas cinematográficas, profundidade de campo, transições e limites.",
+	"Category": "Camera",
+	"CreatedBy": "LUME",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EngineVersion": "5.7.0",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "LumeCinematicCamera",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
