@@ -68,6 +68,9 @@ void ULumeCinematicCameraComponent::BeginPlay()
 		DeactivateOtherCameras();
 	}
 
+	// A rotação vem do LUME, nunca da Control Rotation do pawn (mesmo que marcado no Details).
+	bUsePawnControlRotation = false;
+
 	if (IsValid(TargetActor))
 	{
 		SetTarget(TargetActor, true);

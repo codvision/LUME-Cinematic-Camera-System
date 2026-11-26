@@ -24,8 +24,10 @@ class APlayerController;
  *
  * Também pode ser usada solta no mundo, através do ator "LUME Cinematic Camera".
  */
-UCLASS(ClassGroup = (LUME), Blueprintable, HideCategories = (CameraSettings, CameraOptions),
-	meta = (BlueprintSpawnableComponent, DisplayName = "LUME Cinematic Camera"))
+// Observação: não use HideCategories(CameraSettings/CameraOptions) aqui. A customização de
+// detalhes da UCameraComponent no editor espera essas propriedades e trava (DetailGroup.cpp) sem elas.
+// FOV e pós-processo são controlados pelo LUME a cada frame; bUsePawnControlRotation é forçado a false.
+UCLASS(ClassGroup = (LUME), Blueprintable, meta = (BlueprintSpawnableComponent, DisplayName = "LUME Cinematic Camera"))
 class LUMECINEMATICCAMERA_API ULumeCinematicCameraComponent : public UCameraComponent
 {
 	GENERATED_BODY()
